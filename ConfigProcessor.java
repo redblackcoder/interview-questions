@@ -17,12 +17,25 @@ final class ConfigProcessor {
             return;
         }
 
-        Map<String, String> configProperties = new HashMap<>();
+        Map<String, List<ParameterizedConfigEntry>> parameterizedConfigProperties = new HashMap<>();
         for (String config : args[0].split(";")) {
             String[] kv = config.split(":");
-            configProperties.put(kv[0].trim(), kv[1].trim());
-        };
-        //configProperties.forEach((k,v) -> System.out.println("Key: " + k + " Value: " + v));
+            ParameterizedConfigEntry pce = new ParameterizedConfigEntry(kv[0], kv[1]);
+            List<ParameterizedConfigEntry> pces = parameterizedConfigEntries.get(pce.key);
+            if (pces == null) {
+                pces = new List<>();
+                parameterizedConfigEntries.put(pce.key, pces);
+            }
+
+            pce.add(pce);
+        }
+
+        Map<String, String> configProperties = new HashMap<>();
+        parameterizedConfigProperties.forEach((k,v) -> {
+            ParameterizedProperty pp = new ParameterizedPropertyBuilder().addAll(v).build();
+        }
+
+        configProperties.forEach((k,v) -> System.out.println("Key: " + k + " Value: " + v));
     }
 
     private static class Parameter {
@@ -89,11 +102,11 @@ final class ConfigProcessor {
 
         private ParameterizedConfigEntry(String parameterizedKey, String value) {
             string[] kps = parameterizedKey.split("?");
-            this.key = kps[0];
+            this.key = kps[0].trim();
             if (kps.length == 1) {
                 this.parameters = null;
             } else {
-                String[] rawParameters = kps[1].split("&");
+                String[] rawParameters = kps[1].trim().split("&");
                 this.parameters = Parameter.parseAllKnownParameters(rawParameters);
             }
 
@@ -108,6 +121,11 @@ final class ConfigProcessor {
 
         private ParameterizedProperty() {}
 
+        private String getResolvedValue(List<Parameter> envParams) {
+            // TODO: Implement
+            return "";
+        }
+
         private static class ParameterizedPropertyBuilder {
             private List<ParameterizedConfigEntry> parameterizedConfigEntries;
 
@@ -115,8 +133,16 @@ final class ConfigProcessor {
                 this.parameterizedConfigEntries = new ArrayList<>();
             }
 
-            private ParameterizedPropertyBuilder add(String parameterizedKey, String value) {
-                this.parameterizedConfigEntries.add(new ParameterizedConfigEntry(parameterizedKey, value));
+            private ParameterizedPropertyBuilder add(ParameterizedConfigEntry pce) {
+                this.parameterizedConfigEntries.add(pce);
+                return this;
+            }
+
+            private ParameterizedPropertyBuilder addAll(Collection<ParameterizedConfigEntry> pces) {
+                for (ParameterizedConfigEntry pce : pces) {
+                    this.add(pce);
+                }
+
                 return this;
             }
 
